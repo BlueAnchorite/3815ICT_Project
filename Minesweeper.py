@@ -3,7 +3,7 @@ from random import randint
 
 root = Tk()
 tiles_x, tiles_y = 10, 10
-side_length = 15
+side_length = 30
 num_mines = 10
 placed_mines = 0
 
@@ -13,25 +13,40 @@ canvas.pack()
 
 
 class Tile(object):
-    def __init__(self, x, y, canvas_id):
+    def __init__(self, x, y, canvas_id, centre):
         self.x = x
         self.y = y
         self.canvas_id = canvas_id
         self.contains_mine = False
+        self.surrounding_mines = 0
         self.uncovered = False
+        self.centre = centre
 
 
 def click(event):
     if canvas.find_withtag(CURRENT):
-        canvas.itemconfig(CURRENT, fill="blue")
         clicked = canvas.find_withtag(CURRENT)
         clicked_tile = find_tile(clicked[0])
-        print("clicked tile is: ", clicked_tile.x, clicked_tile.y, clicked_tile.contains_mine)
-        neighbours = find_neighbours(clicked_tile)
-        get_neighbour_mines(neighbours)
-        canvas.update_idletasks()
-        canvas.after(200)
-        canvas.itemconfig(CURRENT, fill="red")
+        if clicked_tile:
+            print("clicked tile is: ", clicked_tile.x, clicked_tile.y, clicked_tile.contains_mine)
+            if clicked_tile.uncovered == False:
+                neighbours = find_neighbours(clicked_tile)
+                get_neighbour_mines(clicked_tile, neighbours)
+                display_tile(clicked_tile, neighbours)
+                canvas.update_idletasks()
+                canvas.after(200)
+
+
+def display_tile(tile, neighbours):
+    tile.uncovered = True
+    if tile.surrounding_mines == 0:
+        for neighbour in neighbours:
+            surrounding_neighbours = find_neighbours(neighbour)
+            get_neighbour_mines(neighbour,surrounding_neighbours)
+            display_tile(neighbour,surrounding_neighbours)
+    else:
+        canvas.create_text(tile.centre["x"], tile.centre["y"], font=("", int((side_length * 2 ) / 3)), text=tile.surrounding_mines)
+    canvas.itemconfig(tile.canvas_id, fill="white")
 
 
 def find_neighbours(clicked_tile):
@@ -59,7 +74,8 @@ def find_neighbours(clicked_tile):
     for y in range(y_start, y_end):
         for x in range(x_start, x_end):
             if clicked_tile.x != x or clicked_tile.y != y:
-                neighbours.append(tiles[x][y])
+                if tiles[x][y].uncovered == False:
+                    neighbours.append(tiles[x][y])
     return neighbours
 
 
@@ -70,12 +86,12 @@ def find_tile(find_id):
                 return item
 
 
-def get_neighbour_mines(neighbours):
+def get_neighbour_mines(tile, neighbours):
     surrounding_mines = 0
     for neighbour in neighbours:
         if neighbour.contains_mine:
             surrounding_mines += 1
-    return surrounding_mines
+    tile.surrounding_mines = surrounding_mines
 
 
 items = []
@@ -85,7 +101,10 @@ for i in range(tiles_y):
     for f in range(tiles_x):
         x = side_length * f
         canvas_id = canvas.create_rectangle(x, y, x + side_length, y + side_length, fill="red")
-        new_tile = Tile(f, i, canvas_id)
+        centre_x = (x + (side_length/2))
+        centre_y = (y + (side_length/2))
+        centre = {"x": centre_x, "y": centre_y}
+        new_tile = Tile(f, i, canvas_id, centre)
         tiles[f][i] = new_tile
 
 while placed_mines < num_mines:
