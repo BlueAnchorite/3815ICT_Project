@@ -70,7 +70,6 @@ def display_tile(tile, neighbours):
         canvas.create_text(tile.centre["x"], tile.centre["y"], font=("", int((side_length * 2 ) / 3)), text=tile.surrounding_mines)
 
 
-
 def find_neighbours(clicked_tile):
     neighbours = []
     if clicked_tile.y == 0:
@@ -136,6 +135,12 @@ def setup_board():
             tiles[rand_x][rand_y].contains_mine = True
             placed_mines += 1
 
+
+def have_won():
+    for tile in tiles:
+        if tile.uncovered == False and tile.contains_mine == False:
+            return False
+    return True
 
 canvas.bind("<Button-1>", reveal_tile)
 canvas.bind("<Button-3>", flag_tile)
