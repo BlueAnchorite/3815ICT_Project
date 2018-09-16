@@ -5,7 +5,8 @@ root = Tk()
 tiles_x, tiles_y = 10, 10
 side_length = 30
 num_mines = 10
-placed_mines = 0
+tiles = [[0] * tiles_y for i in range(tiles_x)]
+default_colour = "#b7f4f0"
 
 canvas = Canvas(root, width=tiles_x * side_length, height=tiles_y * side_length)
 canvas.place(relx=0.5, rely=0.5, anchor=CENTER)
@@ -18,12 +19,13 @@ class Tile(object):
         self.y = y
         self.canvas_id = canvas_id
         self.contains_mine = False
+        self.is_flagged = False
         self.surrounding_mines = 0
         self.uncovered = False
         self.centre = centre
 
 
-def click(event):
+def reveal_tile(event):
     if canvas.find_withtag(CURRENT):
         clicked = canvas.find_withtag(CURRENT)
         clicked_tile = find_tile(clicked[0])
@@ -37,16 +39,36 @@ def click(event):
                 canvas.after(200)
 
 
+def flag_tile(event):
+    if canvas.find_withtag(CURRENT):
+        clicked = canvas.find_withtag(CURRENT)
+        clicked_tile = find_tile(clicked[0])
+        if clicked_tile:
+            print("flagged tile is: ", clicked_tile.x, clicked_tile.y, clicked_tile.contains_mine)
+            if clicked_tile.uncovered == False and clicked_tile.is_flagged == False:
+                canvas.itemconfig(clicked_tile.canvas_id, fill="red")
+                clicked_tile.is_flagged = True
+                canvas.update_idletasks()
+                canvas.after(200)
+            else:
+                canvas.itemconfig(clicked_tile.canvas_id, fill=default_colour)
+                clicked_tile.is_flagged = False
+
+
 def display_tile(tile, neighbours):
     tile.uncovered = True
-    if tile.surrounding_mines == 0:
+    canvas.itemconfig(tile.canvas_id, fill="white")
+    if tile.surrounding_mines == 0 and tile.contains_mine == False:
         for neighbour in neighbours:
             surrounding_neighbours = find_neighbours(neighbour)
-            get_neighbour_mines(neighbour,surrounding_neighbours)
-            display_tile(neighbour,surrounding_neighbours)
+            get_neighbour_mines(neighbour, surrounding_neighbours)
+            display_tile(neighbour, surrounding_neighbours)
+    elif tile.contains_mine == True:
+        canvas.create_text(tile.centre["x"], tile.centre["y"], font=("", int((side_length * 2) / 3)), text="*")
+        #call game over function here
     else:
         canvas.create_text(tile.centre["x"], tile.centre["y"], font=("", int((side_length * 2 ) / 3)), text=tile.surrounding_mines)
-    canvas.itemconfig(tile.canvas_id, fill="white")
+
 
 
 def find_neighbours(clicked_tile):
@@ -94,25 +116,28 @@ def get_neighbour_mines(tile, neighbours):
     tile.surrounding_mines = surrounding_mines
 
 
-items = []
-tiles = [[0] * tiles_y for i in range(tiles_x)]
-for i in range(tiles_y):
-    y = i * side_length
-    for f in range(tiles_x):
-        x = side_length * f
-        canvas_id = canvas.create_rectangle(x, y, x + side_length, y + side_length, fill="red")
-        centre_x = (x + (side_length/2))
-        centre_y = (y + (side_length/2))
-        centre = {"x": centre_x, "y": centre_y}
-        new_tile = Tile(f, i, canvas_id, centre)
-        tiles[f][i] = new_tile
+def setup_board():
+    placed_mines = 0
+    for i in range(tiles_y):
+        y = i * side_length
+        for f in range(tiles_x):
+            x = side_length * f
+            canvas_id = canvas.create_rectangle(x, y, x + side_length, y + side_length, fill=default_colour)
+            centre_x = (x + (side_length/2))
+            centre_y = (y + (side_length/2))
+            centre = {"x": centre_x, "y": centre_y}
+            new_tile = Tile(f, i, canvas_id, centre)
+            tiles[f][i] = new_tile
 
-while placed_mines < num_mines:
-    rand_x = randint(0, tiles_x - 1)
-    rand_y = randint(0, tiles_y - 1)
-    if tiles[rand_x][rand_y].contains_mine == False:
-        tiles[rand_x][rand_y].contains_mine = True
-        placed_mines += 1
+    while placed_mines < num_mines:
+        rand_x = randint(0, tiles_x - 1)
+        rand_y = randint(0, tiles_y - 1)
+        if tiles[rand_x][rand_y].contains_mine == False:
+            tiles[rand_x][rand_y].contains_mine = True
+            placed_mines += 1
 
-canvas.bind("<Button-1>", click)
+
+canvas.bind("<Button-1>", reveal_tile)
+canvas.bind("<Button-3>", flag_tile)
+setup_board()
 root.mainloop()
