@@ -1,11 +1,12 @@
 from tkinter import *
+from tkinter import messagebox
 from random import randint
 
 root = Tk()
 tiles_x, tiles_y = 10, 10
 side_length = 30
 num_mines = 10
-tiles = [[0] * tiles_y for i in range(tiles_x)]
+tiles = []
 default_colour = "#b7f4f0"
 
 canvas = Canvas(root, width=tiles_x * side_length, height=tiles_y * side_length)
@@ -66,8 +67,14 @@ def display_tile(tile, neighbours):
     elif tile.contains_mine == True:
         canvas.create_text(tile.centre["x"], tile.centre["y"], font=("", int((side_length * 2) / 3)), text="*")
         #call game over function here
+        if messagebox.askyesno('Game Over', 'Try Again?'):
+            setup_board()
     else:
         canvas.create_text(tile.centre["x"], tile.centre["y"], font=("", int((side_length * 2 ) / 3)), text=tile.surrounding_mines)
+
+    if have_won():
+        if messagebox.askyesno('Winner!', 'You Won! Try Again?'):
+            setup_board()
 
 
 def find_neighbours(clicked_tile):
@@ -117,6 +124,8 @@ def get_neighbour_mines(tile, neighbours):
 
 def setup_board():
     placed_mines = 0
+    global tiles
+    tiles = [[0] * tiles_y for i in range(tiles_x)]
     for i in range(tiles_y):
         y = i * side_length
         for f in range(tiles_x):
@@ -137,9 +146,10 @@ def setup_board():
 
 
 def have_won():
-    for tile in tiles:
-        if tile.uncovered == False and tile.contains_mine == False:
-            return False
+    for column in tiles:
+        for tile in column:
+            if tile.uncovered == False and tile.contains_mine == False:
+                return False
     return True
 
 canvas.bind("<Button-1>", reveal_tile)
