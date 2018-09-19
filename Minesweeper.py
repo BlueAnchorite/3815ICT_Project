@@ -1,6 +1,8 @@
 from tkinter import *
 from tkinter import messagebox
 from random import randint
+import time, _thread, sys
+
 
 root = Tk()
 tiles_x, tiles_y = 10, 10
@@ -8,6 +10,8 @@ side_length = 30
 num_mines = 10
 tiles = []
 default_colour = "#b7f4f0"
+start_time = 0
+finish_time = 0
 
 canvas = Canvas(root, width=tiles_x * side_length, height=tiles_y * side_length)
 canvas.place(relx=0.5, rely=0.5, anchor=CENTER)
@@ -27,11 +31,14 @@ class Tile(object):
 
 
 def reveal_tile(event):
+    global start_time
     if canvas.find_withtag(CURRENT):
         clicked = canvas.find_withtag(CURRENT)
         clicked_tile = find_tile(clicked[0])
         if clicked_tile:
-            print("clicked tile is: ", clicked_tile.x, clicked_tile.y, clicked_tile.contains_mine)
+            if start_time == 0:
+                start_time = time.time()
+                _thread.start_new_thread(timer, ())
             if clicked_tile.uncovered == False:
                 neighbours = find_neighbours(clicked_tile)
                 get_neighbour_mines(clicked_tile, neighbours)
@@ -45,18 +52,18 @@ def flag_tile(event):
         clicked = canvas.find_withtag(CURRENT)
         clicked_tile = find_tile(clicked[0])
         if clicked_tile:
-            print("flagged tile is: ", clicked_tile.x, clicked_tile.y, clicked_tile.contains_mine)
             if clicked_tile.uncovered == False and clicked_tile.is_flagged == False:
                 canvas.itemconfig(clicked_tile.canvas_id, fill="red")
                 clicked_tile.is_flagged = True
                 canvas.update_idletasks()
                 canvas.after(200)
-            else:
+            elif clicked_tile.uncovered == False and clicked_tile.is_flagged == True:
                 canvas.itemconfig(clicked_tile.canvas_id, fill=default_colour)
                 clicked_tile.is_flagged = False
 
 
 def display_tile(tile, neighbours):
+    global start_time, finish_time
     tile.uncovered = True
     canvas.itemconfig(tile.canvas_id, fill="white")
     if tile.surrounding_mines == 0 and tile.contains_mine == False:
@@ -66,15 +73,25 @@ def display_tile(tile, neighbours):
             display_tile(neighbour, surrounding_neighbours)
     elif tile.contains_mine == True:
         canvas.create_text(tile.centre["x"], tile.centre["y"], font=("", int((side_length * 2) / 3)), text="*")
-        #call game over function here
-        if messagebox.askyesno('Game Over', 'Try Again?'):
+        finish_time = time.time()
+        minutes, seconds = divmod(int(finish_time - start_time), 60)
+        #create custom popup with 3 buttons, one to reset, one to go to main menu and one to quit entirely
+        if messagebox.askyesno('Game Over', 'You lost in {} minutes and {} seconds, Try Again?'.format(minutes,seconds)):
             setup_board()
+        else:
+            sys.exit(0)
+
     else:
         canvas.create_text(tile.centre["x"], tile.centre["y"], font=("", int((side_length * 2 ) / 3)), text=tile.surrounding_mines)
 
     if have_won():
-        if messagebox.askyesno('Winner!', 'You Won! Try Again?'):
+        finish_time = time.time()
+        minutes, seconds = divmod(int(finish_time - start_time), 60)
+        #create custom popup with 3 buttons, one to reset, one to go to main menu and one to quit entirely
+        if messagebox.askyesno('Winner!', 'You Won in {} minutes and {} seconds! Try Again?'.format(minutes,seconds)):
             setup_board()
+        else:
+            sys.exit(0)
 
 
 def find_neighbours(clicked_tile):
@@ -124,15 +141,18 @@ def get_neighbour_mines(tile, neighbours):
 
 def setup_board():
     placed_mines = 0
-    global tiles
+    global tiles, start_time, finish_time
+
+    start_time = 0
+    finish_time = 0
     tiles = [[0] * tiles_y for i in range(tiles_x)]
     for i in range(tiles_y):
         y = i * side_length
         for f in range(tiles_x):
             x = side_length * f
-            canvas_id = canvas.create_rectangle(x, y, x + side_length, y + side_length, fill=default_colour)
             centre_x = (x + (side_length/2))
             centre_y = (y + (side_length/2))
+            canvas_id = canvas.create_rectangle(centre_x - (side_length/2), centre_y - (side_length/2), centre_x + (side_length/2), centre_y + (side_length/2), fill=default_colour)
             centre = {"x": centre_x, "y": centre_y}
             new_tile = Tile(f, i, canvas_id, centre)
             tiles[f][i] = new_tile
@@ -151,6 +171,13 @@ def have_won():
             if tile.uncovered == False and tile.contains_mine == False:
                 return False
     return True
+
+
+def timer():
+    global finish_time
+    while finish_time == 0:
+        time.sleep(1)
+
 
 canvas.bind("<Button-1>", reveal_tile)
 canvas.bind("<Button-3>", flag_tile)
