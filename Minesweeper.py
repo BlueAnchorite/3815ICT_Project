@@ -12,10 +12,9 @@ tiles = []
 default_colour = "#b7f4f0"
 start_time = 0
 finish_time = 0
+timer_thread = None
 
-canvas = Canvas(root, width=tiles_x * side_length, height=tiles_y * side_length)
-canvas.place(relx=0.5, rely=0.5, anchor=CENTER)
-canvas.pack()
+
 
 
 class Tile(object):
@@ -32,13 +31,14 @@ class Tile(object):
 
 def reveal_tile(event):
     global start_time
+    global timer_thread
     if canvas.find_withtag(CURRENT):
         clicked = canvas.find_withtag(CURRENT)
         clicked_tile = find_tile(clicked[0])
         if clicked_tile:
             if start_time == 0:
                 start_time = time.time()
-                _thread.start_new_thread(timer, ())
+                timer_thread = _thread.start_new_thread(timer, ())
             if clicked_tile.uncovered == False:
                 neighbours = find_neighbours(clicked_tile)
                 get_neighbour_mines(clicked_tile, neighbours)
@@ -146,6 +146,8 @@ def setup_board():
     start_time = 0
     finish_time = 0
     tiles = [[0] * tiles_y for i in range(tiles_x)]
+    time_label.config(text="Time: ")
+    score_label.config(text="Score: ")
     for i in range(tiles_y):
         y = i * side_length
         for f in range(tiles_x):
@@ -175,9 +177,32 @@ def have_won():
 
 def timer():
     global finish_time
-    while finish_time == 0:
+    global start_time
+    while start_time != 0 and finish_time == 0:
+        game_time = int(time.time()- start_time)
+        time_label.config(text="Time: {}".format(game_time))
+        score_label.config(text="Score: {}".format(10000 - (game_time * 5)))
         time.sleep(1)
 
+
+Grid.rowconfigure(root, 0, weight=1)
+Grid.columnconfigure(root, 0, weight=1)
+
+frame = Frame(root)
+frame.grid(row=0, sticky=W+E)
+Grid.rowconfigure(frame, 0, weight=1)
+Grid.columnconfigure(frame, 0, weight=1)
+Grid.columnconfigure(frame, 1, weight=1)
+Grid.columnconfigure(frame, 2, weight=1)
+
+time_label = Label(frame, text="Time: ", width=10)
+time_label.grid(row=0, column=0, sticky=W)
+reset_button = Button(frame, text="Reset", width=15, command = setup_board).grid(row=0, column=1)
+score_label = Label(frame, text="Score: ", width=10)
+score_label.grid(row=0, column=2, sticky=W)
+
+canvas = Canvas(root, width=tiles_x * side_length, height=tiles_y * side_length)
+canvas.grid(row=1)
 
 canvas.bind("<Button-1>", reveal_tile)
 canvas.bind("<Button-3>", flag_tile)
