@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import messagebox
 from random import randint
-import time, _thread, sys
+import time, _thread, sys, math
 
 
 class Board(object):
@@ -28,47 +28,35 @@ class Board(object):
             game_view.update_view()
             finish_time = time.time()
             minutes, seconds = divmod(int(finish_time - start_time), 60)
-            # create custom popup with 3 buttons, one to reset, one to go to main menu and one to quit entirely
             game_controller.have_lost(minutes, seconds)
-        else:
-            game_view.update_view()
 
         if self.have_won():
             game_view.update_view()
             finish_time = time.time()
             minutes, seconds = divmod(int(finish_time - start_time), 60)
-            # create custom popup with 3 buttons, one to reset, one to go to main menu and one to quit entirely
             game_controller.have_won(minutes, seconds)
 
-
+        game_view.update_view()
 
     def find_neighbours(self, clicked_tile):
         neighbours = []
-        if clicked_tile.y == 0:
-            y_start = 0
-            y_end = clicked_tile.y + 2
-        elif clicked_tile.y == (self.tiles_y - 1):
-            y_start = clicked_tile.y - 1
-            y_end = self.tiles_y
-        else:
-            y_start = clicked_tile.y - 1
-            y_end = clicked_tile.y + 2
+        offset_directions = [
+            [[+1, 0], [+1, -1], [0, -1],
+             [-1, -1], [-1, 0], [0, +1]],
+            [[+1, +1], [+1, 0], [0, -1],
+             [-1, 0], [-1, +1], [0, +1]],
+        ]
 
-        if clicked_tile.x == 0:
-            x_start = 0
-            x_end = clicked_tile.x + 2
-        elif clicked_tile.x == (self.tiles_x - 1):
-            x_start = clicked_tile.x - 1
-            x_end = self.tiles_x
-        else:
-            x_start = clicked_tile.x - 1
-            x_end = clicked_tile.x + 2
+        parity = clicked_tile.x & 1
+        for i in range(6):
+            dir = offset_directions[parity][i]
+            if clicked_tile.x + dir[0] >= 0 and clicked_tile.x + dir[0] < self.tiles_x:
+                if clicked_tile.y + dir[1] >= 0 and clicked_tile.y + dir[1] < self.tiles_y:
+                    if self.tiles[clicked_tile.x + dir[0]][clicked_tile.y + dir[1]].uncovered == False:
+                        neighbours.append(self.tiles[clicked_tile.x + dir[0]][clicked_tile.y + dir[1]])
 
-        for y in range(y_start, y_end):
-            for x in range(x_start, x_end):
-                if clicked_tile.x != x or clicked_tile.y != y:
-                    if self.tiles[x][y].uncovered == False:
-                        neighbours.append(self.tiles[x][y])
+
+
         return neighbours
 
     def find_tile(self, find_id):
@@ -92,12 +80,21 @@ class Board(object):
         finish_time = 0
         self.tiles = [[0] * self.tiles_y for i in range(self.tiles_x)]
         for i in range(self.tiles_y):
-            y = i * self.side_length
             for f in range(self.tiles_x):
-                x = self.side_length * f
-                centre_x = (x + (self.side_length / 2))
-                centre_y = (y + (self.side_length / 2))
-                points = [x, y, x + self.side_length, y + self.side_length]
+                width = 2 * self.side_length
+                height = math.sqrt(3) * self.side_length
+                if f % 2 == 0:
+                    centre_x = (width * 3/4) * f + (width)
+                    centre_y = i * height + (height/2) + 5
+                elif f % 2 == 1:
+                    centre_x = (width * 3/4) * f + (width)
+                    centre_y = i * height + height + 5
+                points = []
+                for j in range(6):
+                    angle_deg = 60 * j
+                    angle_rad = math.pi / 180 * angle_deg
+                    points.append(centre_x + self.side_length * math.cos(angle_rad))
+                    points.append(centre_y + self.side_length * math.sin(angle_rad))
                 centre = {"x": centre_x, "y": centre_y}
                 new_tile = Tile(f, i, game_view.create_canvas_tile(points), centre)
                 self.tiles[f][i] = new_tile
@@ -137,6 +134,9 @@ class Board(object):
             elif clicked_tile.uncovered == False and clicked_tile.is_flagged == True:
                 clicked_tile.is_flagged = False
         game_view.update_view()
+
+
+
 
 
 class Tile(object):
@@ -197,7 +197,9 @@ class View(object):
         self.score_label = Label(self.frame, text="Score: ", width=10)
         self.score_label.grid(row=0, column=2, sticky=W)
 
-        self.canvas = Canvas(self.root, width=game_board.tiles_x * game_board.side_length, height=game_board.tiles_y * game_board.side_length)
+        self.canvas = Canvas(self.root, width=game_board.tiles_x * (1.75 * game_board.side_length),
+                             height=(game_board.tiles_y * (math.sqrt(3) * game_board.side_length))
+                                        + (math.sqrt(3) * game_board.side_length))
         self.canvas.grid(row=1)
 
         self.canvas.bind("<Button-1>", game_controller.reveal_event)
@@ -223,12 +225,13 @@ class View(object):
 
         self.canvas.update_idletasks()
 
+
     def reset_view(self):
         self.time_label.config(text="Time: ")
         self.score_label.config(text="Score: ")
 
     def create_canvas_tile(self, points):
-        return self.canvas.create_rectangle(points, fill=game_board.default_colour)
+        return self.canvas.create_polygon(points, outline = "black",fill=game_board.default_colour)
 
     def timer(self):
         global finish_time
