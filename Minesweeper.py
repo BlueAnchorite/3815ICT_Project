@@ -2,17 +2,12 @@ from tkinter import *
 from tkinter import messagebox
 from random import randint
 import time, _thread, sys
+import Abstract_Classes
 
 
-class Board(object):
+class Board(Abstract_Classes.Board):
     def __init__(self, tiles_x, tiles_y, tile_size, num_mines):
-        self.tiles_x, self.tiles_y = tiles_x, tiles_y
-        self.side_length = tile_size
-        self.num_mines = num_mines
-        self.tiles = []
-        self.default_colour = "#b7f4f0"
-        self.start_time = 0
-        self.finish_time = 0
+        super().__init__(tiles_x, tiles_y, tile_size, num_mines)
 
     def display_tile(self, tile, neighbours):
         global start_time, finish_time
@@ -139,19 +134,12 @@ class Board(object):
         game_view.update_view()
 
 
-class Tile(object):
+class Tile(Abstract_Classes.Tile):
     def __init__(self, x, y, canvas_id, centre):
-        self.x = x
-        self.y = y
-        self.canvas_id = canvas_id
-        self.contains_mine = False
-        self.is_flagged = False
-        self.surrounding_mines = 0
-        self.uncovered = False
-        self.centre = centre
+        super().__init__(x, y, canvas_id, centre)
 
 
-class Controller(object):
+class Controller(Abstract_Classes.Controller):
 
     def reveal_event(self, event):
         if game_view.canvas.find_withtag(CURRENT):
@@ -178,7 +166,7 @@ class Controller(object):
             sys.exit(0)
 
 
-class View(object):
+class View(Abstract_Classes.View):
     def __init__(self):
         self.root = Tk()
         Grid.rowconfigure(self.root, 0, weight=1)
@@ -240,8 +228,9 @@ class View(object):
             time.sleep(1)
 
 
-game_board = Board(10, 10, 30, 20)
 game_controller = Controller()
+game_board = Board(10, 10, 30, 20)
+
 game_view = View()
 game_board.setup_board()
 game_view.root.mainloop()
