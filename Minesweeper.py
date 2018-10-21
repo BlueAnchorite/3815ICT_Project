@@ -5,7 +5,7 @@ import time, _thread, sys
 import Abstract_Classes
 
 
-class Board(Abstract_Classes.Board):
+class Minesweeper_Board(Abstract_Classes.Board):
     def __init__(self, tiles_x, tiles_y, tile_size, num_mines):
         super().__init__(tiles_x, tiles_y, tile_size, num_mines)
 
@@ -18,15 +18,12 @@ class Board(Abstract_Classes.Board):
                 surrounding_neighbours = self.find_neighbours(neighbour)
                 self.get_neighbour_mines(neighbour, surrounding_neighbours)
                 self.display_tile(neighbour, surrounding_neighbours)
-            game_view.update_view()
         elif tile.contains_mine == True:
             game_view.update_view()
             finish_time = time.time()
             minutes, seconds = divmod(int(finish_time - start_time), 60)
             # create custom popup with 3 buttons, one to reset, one to go to main menu and one to quit entirely
             game_controller.have_lost(minutes, seconds)
-        else:
-            game_view.update_view()
 
         if self.have_won():
             game_view.update_view()
@@ -82,7 +79,6 @@ class Board(Abstract_Classes.Board):
     def setup_board(self):
         placed_mines = 0
         global tiles, start_time, finish_time
-        game_view.reset_view()
         start_time = 0
         finish_time = 0
         self.tiles = [[0] * self.tiles_y for i in range(self.tiles_x)]
@@ -131,7 +127,6 @@ class Board(Abstract_Classes.Board):
                 clicked_tile.is_flagged = True
             elif clicked_tile.uncovered == False and clicked_tile.is_flagged == True:
                 clicked_tile.is_flagged = False
-        game_view.update_view()
 
 
 class Tile(Abstract_Classes.Tile):
@@ -139,22 +134,25 @@ class Tile(Abstract_Classes.Tile):
         super().__init__(x, y, canvas_id, centre)
 
 
-class Controller(Abstract_Classes.Controller):
+class Minesweeper_Controller(Abstract_Classes.Controller):
 
     def reveal_event(self, event):
         if game_view.canvas.find_withtag(CURRENT):
             clicked = game_view.canvas.find_withtag(CURRENT)
             game_board.reveal_tile(clicked)
+            game_view.update_view()
 
     def flag_event(self, event):
         if game_view.canvas.find_withtag(CURRENT):
             clicked = game_view.canvas.find_withtag(CURRENT)
             game_board.flag_tile(clicked)
+            game_view.update_view()
 
     def have_won(self, minutes, seconds):
         if messagebox.askyesno('Winner!',
                                'You Won in {} minutes and {} seconds! Try Again?'.format(minutes, seconds)):
             game_board.setup_board()
+            game_view.reset_view()
         else:
             sys.exit(0)
 
@@ -162,11 +160,12 @@ class Controller(Abstract_Classes.Controller):
         if messagebox.askyesno('Game Over',
                                'You lost in {} minutes and {} seconds, Try Again?'.format(minutes, seconds)):
             game_board.setup_board()
+            game_view.reset_view()
         else:
             sys.exit(0)
 
 
-class View(Abstract_Classes.View):
+class Minesweeper_View(Abstract_Classes.View):
     def __init__(self):
         self.root = Tk()
         Grid.rowconfigure(self.root, 0, weight=1)
@@ -228,9 +227,9 @@ class View(Abstract_Classes.View):
             time.sleep(1)
 
 
-game_controller = Controller()
-game_board = Board(10, 10, 30, 20)
+game_controller = Minesweeper_Controller()
+game_board = Minesweeper_Board(10, 10, 30, 20)
 
-game_view = View()
+game_view = Minesweeper_View()
 game_board.setup_board()
 game_view.root.mainloop()
